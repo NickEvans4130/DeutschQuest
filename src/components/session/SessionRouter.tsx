@@ -126,14 +126,14 @@ export function SessionRouter() {
       return <DialectCard dialect={dailyContent.dialect} onComplete={handleDialectComplete} />;
 
     case 'flashcard2': {
-      // Round 2: due cards from word bank excluding today's daily cards (they'll be due tomorrow)
+      // Round 2: due cards excluding today's daily cards (those are due tomorrow after round 1)
       const dailyIds2 = new Set(dailyContent.flashcards.map((c) => c.id));
       const dueCards2 = getDueCards(8).filter((c) => !dailyIds2.has(c.id));
-      const fallback = dailyContent.flashcards;
       return (
         <CardStack
-          cards={dueCards2.length > 0 ? dueCards2 : fallback}
+          cards={dueCards2}
           onComplete={handleFlashcard2Complete}
+          emptyMessage="No older cards due today"
         />
       );
     }
