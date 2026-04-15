@@ -45,7 +45,7 @@ export function SessionRouter() {
   };
 
   const handleNewsComplete = (score: number) => {
-    // Auto-add news vocab to word bank
+    // Add news vocab cards to word bank
     const vocabCards = dailyContent.news.vocab.map((v, i) => ({
       id: `news-vocab-${todayISO()}-${i}`,
       german: v.article ? `${v.article} ${v.word}` : v.word,
@@ -55,7 +55,8 @@ export function SessionRouter() {
       tags: ['noun' as const],
       difficulty: 1 as const,
     }));
-    addCards(vocabCards);
+    // Also seed today's daily flashcards into the word bank now (safe: inside event handler)
+    addCards([...vocabCards, ...dailyContent.flashcards]);
     handleModuleComplete('news', score, { wordsAdded: vocabCards.length });
   };
 
@@ -103,38 +104,39 @@ export function SessionRouter() {
     navigate('/');
   };
 
-  // Get flashcard sets
-  const newCards = dailyContent.flashcards.slice(0, 6);
-  const dueCards1 = getDueCards(2);
-  const round1Cards = [...newCards, ...dueCards1];
-
-  const dueCards2 = getDueCards(8);
-
   switch (currentModule) {
     case 'news':
       return <NewsReader news={dailyContent.news} onComplete={handleNewsComplete} />;
 
-    case 'flashcard1':
-      // Ensure new cards are in word bank
-      addCards(newCards);
+    case 'flashcard1': {
+      // Daily flashcards were added to word bank in handleNewsComplete (safe, in event handler)
+      // Round 1: all 6 daily cards + up to 2 due cards from previous sessions
+      const dailyIds = new Set(dailyContent.flashcards.map((c) => c.id));
+      const dueFromPrevious = getDueCards(10).filter((c) => !dailyIds.has(c.id)).slice(0, 2);
+      const round1Cards = [...dailyContent.flashcards, ...dueFromPrevious];
       return (
         <CardStack
-          cards={round1Cards.length > 0 ? round1Cards : newCards}
+          cards={round1Cards}
           onComplete={handleFlashcard1Complete}
         />
       );
+    }
 
     case 'dialect':
       return <DialectCard dialect={dailyContent.dialect} onComplete={handleDialectComplete} />;
 
-    case 'flashcard2':
-      // If no due cards, use new cards again
+    case 'flashcard2': {
+      // Round 2: due cards from word bank excluding today's daily cards (they'll be due tomorrow)
+      const dailyIds2 = new Set(dailyContent.flashcards.map((c) => c.id));
+      const dueCards2 = getDueCards(8).filter((c) => !dailyIds2.has(c.id));
+      const fallback = dailyContent.flashcards;
       return (
         <CardStack
-          cards={dueCards2.length > 0 ? dueCards2 : newCards}
+          cards={dueCards2.length > 0 ? dueCards2 : fallback}
           onComplete={handleFlashcard2Complete}
         />
       );
+    }
 
     case 'summary':
       return (
