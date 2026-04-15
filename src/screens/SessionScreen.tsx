@@ -11,7 +11,7 @@ export function SessionScreen() {
   const { activeSession, dailyContent, isLoadingContent, startSession } = useSessionStore();
 
   useEffect(() => {
-    if (!activeSession) {
+    if (!activeSession || activeSession.isComplete) {
       startSession();
     }
   }, []);

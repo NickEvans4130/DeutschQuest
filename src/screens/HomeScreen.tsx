@@ -37,10 +37,6 @@ export function HomeScreen() {
 
   useEffect(() => {
     async function fetchContent() {
-      if (completedToday) {
-        setContentReady(true);
-        return;
-      }
       setLoadingContent(true);
       try {
         const { content, source } = await loadDailyContent(
@@ -125,19 +121,21 @@ export function HomeScreen() {
         <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl">
           <LoadingSpinner />
         </div>
-      ) : completedToday ? (
-        <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-2xl p-5 flex items-center gap-3">
-          <CheckCircle size={24} className="text-emerald-400 flex-shrink-0" />
-          <div>
-            <p className="text-emerald-300 font-semibold">Session complete!</p>
-            <p className="text-slate-400 text-sm">Come back tomorrow to keep your streak.</p>
-          </div>
-        </div>
       ) : (
         <div className="bg-gradient-to-br from-amber-900/30 to-slate-900 border border-amber-500/40 rounded-2xl p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <Zap size={18} className="text-amber-400" />
-            <p className="text-amber-300 font-semibold">Today's Quest Awaits</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap size={18} className="text-amber-400" />
+              <p className="text-amber-300 font-semibold">
+                {completedToday ? 'Keep going!' : "Today's Quest Awaits"}
+              </p>
+            </div>
+            {completedToday && (
+              <div className="flex items-center gap-1.5 bg-emerald-900/40 border border-emerald-600/40 rounded-lg px-2 py-1">
+                <CheckCircle size={12} className="text-emerald-400" />
+                <span className="text-emerald-300 text-xs">Streak secured</span>
+              </div>
+            )}
           </div>
           <div className="flex gap-3 text-sm text-slate-400">
             <span className="flex items-center gap-1"><BookOpen size={12} /> News</span>
@@ -151,7 +149,7 @@ export function HomeScreen() {
             <p className="text-orange-400 text-xs">⚠ Using offline fallback content</p>
           )}
           <Button variant="primary" size="lg" fullWidth onClick={handleStartSession}>
-            Start today's session
+            {completedToday ? 'Start another session' : "Start today's session"}
           </Button>
         </div>
       )}
