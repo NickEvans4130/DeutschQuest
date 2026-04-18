@@ -11,7 +11,7 @@ import { Button } from '../components/shared/Button';
 import { Modal } from '../components/shared/Modal';
 import { FlashCard } from '../components/modules/flashcard/FlashCard';
 import { CardStack } from '../components/modules/flashcard/CardStack';
-import { Search, Plus, Layers, CheckCircle, X } from 'lucide-react';
+import { Search, Plus, Layers, CheckCircle, X, Pencil, Trash2 } from 'lucide-react';
 import type { WordBankEntry } from '../store/useWordBankStore';
 import type { FlashcardTag } from '../types/content';
 
@@ -76,25 +76,29 @@ function LevelTimeline({ currentLevel }: { currentLevel: number }) {
 
 // ─── Word row ─────────────────────────────────────────────────────────────────
 
-function WordRow({ entry, onFlip }: { entry: WordBankEntry; onFlip: (id: string) => void }) {
+function WordRow({ entry, onFlip, onEdit }: { entry: WordBankEntry; onFlip: (id: string) => void; onEdit: (entry: WordBankEntry) => void }) {
   const cardIsDue = entry.dueDate <= todayISO();
   return (
-    <button
-      onClick={() => onFlip(entry.id)}
-      className="w-full text-left flex items-center gap-3 bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-3 hover:border-slate-600 transition-all"
-    >
-      <div className="flex-1 min-w-0">
+    <div className="flex items-center gap-2 bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-3 hover:border-slate-600 transition-all">
+      <button onClick={() => onFlip(entry.id)} className="flex-1 min-w-0 text-left">
         <div className="flex items-baseline gap-1.5">
           {entry.article && <span className="text-amber-400 text-xs">{entry.article}</span>}
           <span className="text-slate-100 font-medium truncate">{entry.german}</span>
         </div>
         <span className="text-slate-400 text-sm truncate">{entry.english}</span>
-      </div>
-      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+      </button>
+      <div className="flex items-center gap-2 flex-shrink-0">
         {cardIsDue && <Badge color="orange" size="xs">Due</Badge>}
         <span className="text-slate-600 text-[10px]">+{entry.interval}d</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(entry); }}
+          className="p-1.5 text-slate-500 hover:text-amber-400 transition-colors"
+          title="Edit word"
+        >
+          <Pencil size={13} />
+        </button>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -201,6 +205,135 @@ function AddWordModal({ isOpen, onClose }: AddWordModalProps) {
   );
 }
 
+// ─── Edit word modal ──────────────────────────────────────────────────────────
+
+interface EditWordModalProps {
+  entry: WordBankEntry | null;
+  onClose: () => void;
+}
+
+function EditWordModal({ entry, onClose }: EditWordModalProps) {
+  const { updateCard, deleteCard } = useWordBankStore();
+  const [german, setGerman] = useState(entry?.german ?? '');
+  const [english, setEnglish] = useState(entry?.english ?? '');
+  const [article, setArticle] = useState<'der' | 'die' | 'das' | ''>(entry?.article ?? '');
+  const [example, setExample] = useState(entry?.example ?? '');
+  const [tags, setTags] = useState<FlashcardTag[]>(entry?.tags ?? []);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Reset fields when entry changes
+  if (!entry) return null;
+
+  const toggleTag = (tag: FlashcardTag) =>
+    setTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
+
+  const handleSave = () => {
+    if (!german.trim() || !english.trim()) return;
+    updateCard(entry.id, {
+      german: german.trim(),
+      english: english.trim(),
+      article: article || null,
+      example: example.trim(),
+      tags: tags.length > 0 ? tags : ['phrase'],
+    });
+    onClose();
+  };
+
+  const handleDelete = () => {
+    deleteCard(entry.id);
+    onClose();
+  };
+
+  const inputClass = 'w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-500 transition-colors';
+
+  return (
+    <Modal isOpen onClose={onClose} title="Edit word">
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          <select
+            value={article}
+            onChange={(e) => setArticle(e.target.value as typeof article)}
+            className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-amber-500 transition-colors w-24"
+          >
+            <option value="">—</option>
+            <option value="der">der</option>
+            <option value="die">die</option>
+            <option value="das">das</option>
+          </select>
+          <input
+            type="text"
+            value={german}
+            onChange={(e) => setGerman(e.target.value)}
+            placeholder="German word *"
+            className={`${inputClass} flex-1`}
+          />
+        </div>
+        <input
+          type="text"
+          value={english}
+          onChange={(e) => setEnglish(e.target.value)}
+          placeholder="English meaning *"
+          className={inputClass}
+        />
+        <input
+          type="text"
+          value={example}
+          onChange={(e) => setExample(e.target.value)}
+          placeholder="Example sentence (optional)"
+          className={inputClass}
+        />
+        <div className="space-y-1.5">
+          <p className="text-slate-400 text-xs">Tags</p>
+          <div className="flex flex-wrap gap-1.5">
+            {ALL_TAGS.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(tag)}
+                className={`px-2 py-0.5 rounded-lg text-xs font-medium border transition-all ${
+                  tags.includes(tag)
+                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Button
+          variant="primary"
+          size="md"
+          fullWidth
+          disabled={!german.trim() || !english.trim()}
+          onClick={handleSave}
+        >
+          Save changes
+        </Button>
+        {confirmDelete ? (
+          <div className="flex gap-2">
+            <Button variant="secondary" size="md" fullWidth onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </Button>
+            <button
+              onClick={handleDelete}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-red-900/30 border border-red-600/50 text-red-400 rounded-xl py-2.5 text-sm font-medium hover:bg-red-900/50 transition-colors"
+            >
+              <Trash2 size={14} /> Delete
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-full flex items-center justify-center gap-1.5 text-slate-500 hover:text-red-400 text-xs py-1 transition-colors"
+          >
+            <Trash2 size={12} /> Delete word
+          </button>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 // ─── Practice overlay ─────────────────────────────────────────────────────────
 
 interface PracticeResult { score: number; correct: number; total: number }
@@ -251,6 +384,7 @@ export function ProgressScreen() {
   const [search, setSearch] = useState('');
   const [flippedId, setFlippedId] = useState<string | null>(null);
   const [addWordOpen, setAddWordOpen] = useState(false);
+  const [editEntry, setEditEntry] = useState<WordBankEntry | null>(null);
   const [practiceCards, setPracticeCards] = useState<WordBankEntry[] | null>(null);
 
   const player = usePlayerStore((s) => s.player);
@@ -285,6 +419,9 @@ export function ProgressScreen() {
 
       {/* Add word modal */}
       <AddWordModal isOpen={addWordOpen} onClose={() => setAddWordOpen(false)} />
+
+      {/* Edit word modal — keyed so state resets when a different entry opens */}
+      <EditWordModal key={editEntry?.id} entry={editEntry} onClose={() => setEditEntry(null)} />
 
       {/* Flip modal */}
       {flippedCard && (
@@ -403,7 +540,7 @@ export function ProgressScreen() {
             ) : (
               <div className="space-y-2">
                 {filteredCards.map((entry) => (
-                  <WordRow key={entry.id} entry={entry} onFlip={setFlippedId} />
+                  <WordRow key={entry.id} entry={entry} onFlip={setFlippedId} onEdit={setEditEntry} />
                 ))}
               </div>
             )}

@@ -15,6 +15,8 @@ interface WordBankStore {
 
   addCard: (card: Flashcard) => void;
   addCards: (cards: Flashcard[]) => void;
+  updateCard: (id: string, fields: Partial<Pick<WordBankEntry, 'german' | 'english' | 'article' | 'example' | 'tags'>>) => void;
+  deleteCard: (id: string) => void;
   rateCard: (id: string, quality: 0 | 2 | 4 | 5) => void;
   getDueCards: (limit?: number) => WordBankEntry[];
   getAllCards: () => WordBankEntry[];
@@ -47,6 +49,20 @@ export const useWordBankStore = create<WordBankStore>()(
               next[card.id] = { ...card, ...defaultSRSCard() };
             }
           }
+          return { entries: next };
+        }),
+
+      updateCard: (id, fields) =>
+        set((state) => {
+          const entry = state.entries[id];
+          if (!entry) return state;
+          return { entries: { ...state.entries, [id]: { ...entry, ...fields } } };
+        }),
+
+      deleteCard: (id) =>
+        set((state) => {
+          const next = { ...state.entries };
+          delete next[id];
           return { entries: next };
         }),
 
